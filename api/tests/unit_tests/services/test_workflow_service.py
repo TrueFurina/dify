@@ -22,6 +22,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
+from graphon.engine_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.enums import (
     BuiltinNodeTypes,
     ErrorStrategy,
@@ -29,7 +30,6 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.errors import WorkflowNodeRunFailedError
-from graphon.graph_events import NodeRunFailedEvent, NodeRunSucceededEvent
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.node_events import NodeRunResult
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig

@@ -124,7 +124,7 @@ class TestInstalledAppWorkflowTaskStopApi:
 
         with (
             patch("controllers.console.explore.workflow.AppQueueManager.set_stop_flag_no_user_check") as stop_flag,
-            patch("controllers.console.explore.workflow.GraphEngineManager.send_stop_command") as send_stop,
+            patch("controllers.console.explore.workflow.send_abort_command") as send_stop,
         ):
             result = method(api, MagicMock(), installed_workflow_app, "task-1")
 

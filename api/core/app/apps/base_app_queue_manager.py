@@ -11,6 +11,7 @@ from redis.exceptions import RedisError
 from sqlalchemy.orm import DeclarativeMeta
 
 from configs import dify_config
+from core.app.apps.workflow.command_channels import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -21,8 +22,7 @@ from core.app.entities.queue_entities import (
     WorkflowQueueMessage,
 )
 from extensions.ext_redis import redis_client
-from graphon.graph_engine.manager import GraphEngineManager
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class AppQueueManager(ABC):
         q: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
 
         self._q = q
-        self._graph_runtime_state: GraphRuntimeState | None = None
+        self._graph_runtime_state: RuntimeState | None = None
         self._stopped_cache: TTLCache[tuple, bool] = TTLCache(maxsize=1, ttl=1)
         self._cache_lock = threading.Lock()
         self._execution_terminal = threading.Event()
@@ -109,7 +109,7 @@ class AppQueueManager(ABC):
         self._q.put(None)
 
     def _abort_execution(self, reason: str) -> None:
-        """Propagate response timeout/disconnect to legacy and GraphEngine runners."""
+        """Propagate response timeout/disconnect to legacy and Engine runners."""
         with self._lifecycle_lock:
             if self._execution_terminal.is_set() or self._abort_sent.is_set():
                 return
@@ -117,7 +117,7 @@ class AppQueueManager(ABC):
 
         try:
             self.set_stop_flag_no_user_check(self._task_id)
-            GraphEngineManager(redis_client).send_stop_command(self._task_id, reason=reason)
+            send_abort_command(self._task_id, reason=reason)
         except Exception:
             logger.exception("Failed to abort app execution for task %s", self._task_id)
 
@@ -142,12 +142,12 @@ class AppQueueManager(ABC):
         self.publish(QueueErrorEvent(error=e), pub_from)
 
     @property
-    def graph_runtime_state(self) -> GraphRuntimeState | None:
+    def graph_runtime_state(self) -> RuntimeState | None:
         """Retrieve the attached graph runtime state, if available."""
         return self._graph_runtime_state
 
     @graph_runtime_state.setter
-    def graph_runtime_state(self, graph_runtime_state: GraphRuntimeState | None) -> None:
+    def graph_runtime_state(self, graph_runtime_state: RuntimeState | None) -> None:
         """Attach the live graph runtime state reference for downstream consumers."""
         self._graph_runtime_state = graph_runtime_state
 

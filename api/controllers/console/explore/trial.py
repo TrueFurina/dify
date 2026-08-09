@@ -53,6 +53,7 @@ from controllers.console.wraps import cloud_edition_billing_resource_check, with
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.workflow.command_channels import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -62,12 +63,10 @@ from core.errors.error import (
 from core.helper import encrypter
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
 from fields.conversation_variable_fields import WorkflowConversationVariableResponse
 from fields.file_fields import FileResponse, FileWithSignedUrl
 from fields.message_fields import SuggestedQuestionsResponse
-from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
@@ -549,7 +548,7 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
         AppQueueManager.set_stop_flag_no_user_check(task_id)
 
         # New graph engine command channel mechanism
-        GraphEngineManager(redis_client).send_stop_command(task_id)
+        send_abort_command(task_id)
 
         return {"result": "success"}
 

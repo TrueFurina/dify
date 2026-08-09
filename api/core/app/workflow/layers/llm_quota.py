@@ -1,5 +1,5 @@
 """
-LLM quota deduction layer for GraphEngine.
+LLM quota deduction layer for Engine.
 
 This layer centralizes model-quota handling outside node implementations.
 
@@ -16,10 +16,10 @@ from typing import final, override
 
 from core.app.llm import deduct_llm_quota_for_model, ensure_llm_quota_available_for_model
 from core.errors.error import QuotaExceededError
+from graphon.engine.command import AbortCommand
+from graphon.engine.layer import Layer
+from graphon.engine_events import EngineEvent, NodeEvent, NodeRunSucceededEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from graphon.graph_engine.entities.commands import AbortCommand, CommandType
-from graphon.graph_engine.layers import GraphEngineLayer
-from graphon.graph_events import GraphEngineEvent, GraphNodeEventBase, NodeRunSucceededEvent
 from graphon.node_events import NodeRunResult
 from graphon.nodes.base.node import Node
 
@@ -34,7 +34,7 @@ _QUOTA_NODE_TYPES = frozenset(
 
 
 @final
-class LLMQuotaLayer(GraphEngineLayer):
+class LLMQuotaLayer(Layer):
     """Graph layer that applies tenant-scoped quota checks to LLM-backed nodes."""
 
     tenant_id: str
@@ -50,7 +50,7 @@ class LLMQuotaLayer(GraphEngineLayer):
         self._abort_sent = False
 
     @override
-    def on_event(self, event: GraphEngineEvent) -> None:
+    def on_event(self, event: EngineEvent) -> None:
         _ = event
 
     @override
@@ -84,9 +84,7 @@ class LLMQuotaLayer(GraphEngineLayer):
             logger.warning("LLM quota check failed, node_id=%s, error=%s", node.id, exc)
 
     @override
-    def on_node_run_end(
-        self, node: Node, error: Exception | None, result_event: GraphNodeEventBase | None = None
-    ) -> None:
+    def on_node_run_end(self, node: Node, error: Exception | None, result_event: NodeEvent | None = None) -> None:
         if error is not None or not isinstance(result_event, NodeRunSucceededEvent) or not self._supports_quota(node):
             return
 
@@ -146,12 +144,7 @@ class LLMQuotaLayer(GraphEngineLayer):
             return
 
         try:
-            self.command_channel.send_command(
-                AbortCommand(
-                    command_type=CommandType.ABORT,
-                    reason=reason,
-                )
-            )
+            self.command_channel.send_command(AbortCommand(reason=reason))
             self._abort_sent = True
         except Exception:
             logger.exception("Failed to send quota abort command")

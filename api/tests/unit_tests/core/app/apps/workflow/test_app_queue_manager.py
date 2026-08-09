@@ -57,7 +57,7 @@ class TestWorkflowAppQueueManager:
     def test_listener_close_aborts_unfinished_execution(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
-            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.base_app_queue_manager.send_abort_command") as send_abort_command,
         ):
             redis_client.get.return_value = None
             manager = WorkflowAppQueueManager(
@@ -72,7 +72,7 @@ class TestWorkflowAppQueueManager:
             assert isinstance(next(listener).event, QueuePingEvent)
             listener.close()
 
-            graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+            send_abort_command.assert_called_once_with(
                 "task",
                 reason="Client response stream closed before app execution completed",
             )
@@ -80,7 +80,7 @@ class TestWorkflowAppQueueManager:
     def test_execution_timeout_aborts_graph_before_stop_event(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
-            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.base_app_queue_manager.send_abort_command") as send_abort_command,
             patch("core.app.apps.base_app_queue_manager.dify_config.APP_MAX_EXECUTION_TIME", 0),
         ):
             redis_client.get.return_value = None
@@ -95,7 +95,7 @@ class TestWorkflowAppQueueManager:
             messages = list(manager.listen())
 
             assert any(isinstance(message.event, QueueStopEvent) for message in messages)
-            graph_engine_manager.return_value.send_stop_command.assert_called_once_with(
+            send_abort_command.assert_called_once_with(
                 "task",
                 reason="App execution exceeded 0 seconds",
             )
@@ -103,7 +103,7 @@ class TestWorkflowAppQueueManager:
     def test_terminal_event_does_not_abort_completed_execution(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
-            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.base_app_queue_manager.send_abort_command") as send_abort_command,
         ):
             redis_client.get.return_value = None
             manager = WorkflowAppQueueManager(
@@ -116,12 +116,12 @@ class TestWorkflowAppQueueManager:
 
             _ = list(manager.listen())
 
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()
 
     def test_workflow_pause_does_not_abort_execution(self):
         with (
             patch("core.app.apps.base_app_queue_manager.redis_client") as redis_client,
-            patch("core.app.apps.base_app_queue_manager.GraphEngineManager") as graph_engine_manager,
+            patch("core.app.apps.base_app_queue_manager.send_abort_command") as send_abort_command,
         ):
             redis_client.get.return_value = None
             manager = WorkflowAppQueueManager(
@@ -136,4 +136,4 @@ class TestWorkflowAppQueueManager:
             assert isinstance(next(listener).event, QueueWorkflowPausedEvent)
             listener.close()
 
-            graph_engine_manager.return_value.send_stop_command.assert_not_called()
+            send_abort_command.assert_not_called()

@@ -38,7 +38,7 @@ from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType, Huma
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from models.account import Account
 from models.enums import CreatorUserRole
 from models.human_input import HumanInputForm
@@ -268,7 +268,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         call_depth=0,
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -630,7 +630,7 @@ class TestHitlServiceApi:
             reason=WorkflowStartReason.INITIAL,
         )
 
-        expiration_time = datetime(2024, 1, 1)
+        expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
         _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
 
         monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=sqlite_engine))
@@ -703,7 +703,7 @@ class TestHitlServiceApi:
         workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
         snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
         resumption_context = _build_resumption_context("task-ctx")
-        expiration_time = datetime(2024, 1, 1)
+        expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
         _persist_human_input_form(sqlite_session, expiration_time=expiration_time)
         monkeypatch.setattr(
             "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",

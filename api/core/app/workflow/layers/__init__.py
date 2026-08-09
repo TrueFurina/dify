@@ -1,4 +1,4 @@
-"""Workflow-level GraphEngine layers that depend on outer infrastructure."""
+"""Workflow-level Engine layers that depend on outer infrastructure."""
 
 from .llm_quota import LLMQuotaLayer
 from .observability import ObservabilityLayer

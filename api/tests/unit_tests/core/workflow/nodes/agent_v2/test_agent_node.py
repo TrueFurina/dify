@@ -43,13 +43,13 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentWorkspaceStore,
 )
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
-from graphon.entities import GraphInitParams
+from graphon.engine_events import NodeRunPauseRequestedEvent
+from graphon.entities import InitParams
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.graph_events import NodeRunPauseRequestedEvent
 from graphon.node_events import StreamCompletedEvent
-from graphon.runtime import GraphRuntimeState
+from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
@@ -315,7 +315,7 @@ def _node(
     binding_resolver: FakeBindingResolver | None = None,
     runtime_request_builder: WorkflowAgentRuntimeRequestBuilder | None = None,
 ) -> DifyAgentNode:
-    graph_init_params = GraphInitParams(
+    graph_init_params = InitParams(
         workflow_id="workflow-1",
         graph_config={"nodes": [], "edges": []},
         run_context={
@@ -352,7 +352,7 @@ def _node(
         data=DifyAgentNodeData.model_validate({"type": BuiltinNodeTypes.AGENT, "version": "2"}),
         graph_init_params=graph_init_params,
         graph_runtime_state=cast(
-            GraphRuntimeState,
+            RuntimeState,
             SimpleNamespace(
                 variable_pool=FakeVariablePool(),
                 graph_execution=SimpleNamespace(aborted=False),

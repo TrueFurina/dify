@@ -9,8 +9,8 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from graphon.engine_events import NodeRunFailedEvent
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.graph_events import NodeRunFailedEvent
 from graphon.node_events.base import NodeRunResult
 from models import Account, Tenant
 from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate, PipelineRecommendedPlugin
@@ -799,8 +799,8 @@ def test_run_datasource_node_preview_online_document(
 def test_handle_node_run_result_success(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
 ) -> None:
+    from graphon.engine_events import NodeRunSucceededEvent
     from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-    from graphon.graph_events import NodeRunSucceededEvent
     from graphon.node_events.base import NodeRunResult
 
     # 1. Setup mock node and result
@@ -1396,8 +1396,8 @@ def test_handle_node_run_result_default_value_strategy(
 ) -> None:
     from datetime import datetime
 
+    from graphon.engine_events import NodeRunFailedEvent
     from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
-    from graphon.graph_events import NodeRunFailedEvent
     from graphon.node_events.base import NodeRunResult
 
     node_instance = SimpleNamespace(

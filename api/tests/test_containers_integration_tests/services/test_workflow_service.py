@@ -1637,8 +1637,8 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
+            from graphon.engine_events import NodeRunSucceededEvent
             from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from graphon.graph_events import NodeRunSucceededEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
 
@@ -1712,8 +1712,8 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
+            from graphon.engine_events import NodeRunFailedEvent
             from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-            from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
 
@@ -1781,8 +1781,8 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
+            from graphon.engine_events import NodeRunFailedEvent
             from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
-            from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
             from graphon.nodes.base.node import Node
 
