@@ -22,6 +22,15 @@ from repositories.workspace_member_query_repository import WorkspaceMemberQueryR
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_avatar_service import AccountAvatarService
+from services.account_change_email_adapters import (
+    BillingAccountEmailPolicyGateway,
+    CeleryChangeEmailNotificationGateway,
+    RateLimiterChangeEmailSendLimiter,
+    RedisChangeEmailSecurityGateway,
+    SecureChangeEmailCodeGenerator,
+    TokenManagerChangeEmailTokenGateway,
+)
+from services.account_change_email_service import AccountChangeEmailService
 from services.account_deletion_adapters import (
     CeleryAccountDeletionScheduler,
     CeleryAccountDeletionVerificationNotifier,
@@ -53,6 +62,7 @@ _EXTENSION_KEY = "application_services"
 @dataclass(frozen=True, slots=True)
 class AccountServices:
     avatar: AccountAvatarService
+    change_email: AccountChangeEmailService
     deletion: AccountDeletionService
     initialization: AccountInitializationService
     integrations: AccountIntegrationService
@@ -87,6 +97,29 @@ def build_application_services(
         accounts=AccountServices(
             avatar=AccountAvatarService(
                 files=SQLAlchemyAccountAvatarFileGateway(session_factory=database_client),
+            ),
+            change_email=AccountChangeEmailService(
+                accounts=accounts,
+                tokens=TokenManagerChangeEmailTokenGateway(),
+                codes=SecureChangeEmailCodeGenerator(),
+                notifications=CeleryChangeEmailNotificationGateway(),
+                send_limits=RateLimiterChangeEmailSendLimiter(
+                    rate_limiter=RateLimiter(
+                        prefix="change_email_rate_limit",
+                        max_attempts=1,
+                        time_window=60,
+                        redis_client=redis,
+                    )
+                ),
+                security=RedisChangeEmailSecurityGateway(
+                    redis=redis,
+                    email_send_ip_limit_per_minute=dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE,
+                    verification_failure_limit=5,
+                    verification_lockout_duration=dify_config.CHANGE_EMAIL_LOCKOUT_DURATION,
+                ),
+                email_policy=BillingAccountEmailPolicyGateway(
+                    billing_enabled=dify_config.BILLING_ENABLED,
+                ),
             ),
             deletion=AccountDeletionService(
                 accounts=accounts,

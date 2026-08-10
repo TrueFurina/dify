@@ -156,6 +156,7 @@ def test_build_application_services_wires_account_profile_repository(
     assert services.accounts.initialization._accounts is accounts
     assert services.accounts.initialization._invitation_required is False
     assert services.accounts.deletion._accounts is accounts
+    assert services.accounts.change_email._accounts is accounts
     assert services.accounts.deletion._memberships is services.workspace_queries._workspaces
     integrations = services.accounts.integrations._integrations
     assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
