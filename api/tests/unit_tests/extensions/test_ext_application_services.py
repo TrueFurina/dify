@@ -10,7 +10,9 @@ from enums import DeploymentEdition
 from extensions import ext_application_services
 from extensions.ext_redis import RedisClientWrapper
 from models.model import DifySetup
+from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
 from repositories.account_repository import SQLAlchemyAccountRepository
+from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.init_validation_service import InvalidInitializationPasswordError
 
 
@@ -150,3 +152,10 @@ def test_build_application_services_wires_account_profile_repository(
     accounts = services.accounts.profile._accounts
     assert isinstance(accounts, SQLAlchemyAccountRepository)
     assert accounts._session_factory is sqlite_session_factory
+    assert services.accounts.password._accounts is accounts
+    integrations = services.accounts.integrations._integrations
+    assert isinstance(integrations, SQLAlchemyAccountIntegrationRepository)
+    assert integrations._session_factory is sqlite_session_factory
+    avatar_files = services.accounts.avatar._files
+    assert isinstance(avatar_files, SQLAlchemyAccountAvatarFileGateway)
+    assert avatar_files._session_factory is sqlite_session_factory
