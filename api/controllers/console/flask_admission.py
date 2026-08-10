@@ -7,7 +7,12 @@ from typing import Concatenate
 from flask import Response, abort, request
 
 from configs import dify_config
-from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    enable_change_email,
+    enterprise_license_required,
+    setup_required,
+)
 from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from libs.login import current_account_with_tenant, login_required
@@ -17,6 +22,7 @@ from machinery.context import RequestContext
 def console_account_admission[T, **P, R](
     *,
     editions: frozenset[DeploymentEdition] | None = None,
+    require_change_email_enabled: bool = False,
     require_initialized: bool = True,
     require_valid_enterprise_license: bool = False,
 ) -> Callable[
@@ -45,6 +51,8 @@ def console_account_admission[T, **P, R](
             return view(self, request_context, *args, **kwargs)
 
         admitted: Callable[Concatenate[T, P], R | Response] = inject_request_context
+        if require_change_email_enabled:
+            admitted = enable_change_email(admitted)
         if require_valid_enterprise_license:
             admitted = enterprise_license_required(admitted)
         if require_initialized:

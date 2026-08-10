@@ -102,24 +102,34 @@ def _build_change_email_token(
 
 
 class TestEducationApi:
-    @patch("controllers.console.workspace.account.BillingService.EducationIdentity.activate")
-    def test_post_returns_temporarily_paused_error_without_activating_discount(
-        self, mock_activate: MagicMock, app: Flask
-    ):
-        account = _build_account("student@example.edu")
+    def test_post_returns_temporarily_paused_error(self, app: Flask):
+        education = MagicMock()
+        education.activate.side_effect = account_errors.EducationDiscountPausedError
+        request_context = RequestContext(
+            request_id="request-1",
+            trace_id=None,
+            account_id="account-1",
+            active_workspace_id="workspace-1",
+        )
 
-        with app.test_request_context("/account/education", method="POST", json={}):
+        with (
+            app.test_request_context("/account/education", method="POST", json={}),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(accounts=SimpleNamespace(education=education)),
+            ),
+        ):
             api = EducationApi()
             method = inspect.unwrap(api.post)
             with pytest.raises(EducationDiscountTemporarilyPausedError) as exc_info:
-                method(api, account)
+                method(api, request_context)
 
         assert exc_info.value.data == {
             "code": "education_discount_temporarily_paused",
             "message": "Education discount temporarily paused, while we upgrade our security measures.",
             "status": 503,
         }
-        mock_activate.assert_not_called()
+        education.activate.assert_called_once_with(request_context)
 
 
 def _change_email_context(account_id: str = "acc") -> RequestContext:
@@ -335,19 +345,27 @@ class TestAccountServiceGetChangeEmailData:
 
 
 class TestAccountDeletionFeedback:
-    @patch("controllers.console.workspace.account.BillingService.update_account_deletion_feedback")
-    def test_should_normalize_feedback_email(self, mock_update, app: Flask):
-        with app.test_request_context(
-            "/account/delete/feedback",
-            method="POST",
-            json={"email": "User@Example.com", "feedback": "test"},
+    def test_delegates_feedback_to_application_service(self, app: Flask):
+        deletion_feedback = MagicMock()
+        with (
+            app.test_request_context(
+                "/account/delete/feedback",
+                method="POST",
+                json={"email": "User@Example.com", "feedback": "test"},
+            ),
+            patch(
+                "controllers.console.workspace.account.application_services",
+                return_value=SimpleNamespace(
+                    accounts=SimpleNamespace(deletion_feedback=deletion_feedback),
+                ),
+            ),
         ):
             api = AccountDeleteUpdateFeedbackApi()
             method = inspect.unwrap(api.post)
             response = method(api)
 
         assert response == {"result": "success"}
-        mock_update.assert_called_once_with("User@Example.com", "test")
+        deletion_feedback.submit.assert_called_once_with(email="User@Example.com", feedback="test")
 
 
 class TestCheckEmailUnique:

@@ -22,6 +22,10 @@ from repositories.workspace_member_query_repository import WorkspaceMemberQueryR
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_avatar_service import AccountAvatarService
+from services.account_billing_adapters import (
+    BillingAccountDeletionFeedbackGateway,
+    BillingAccountEducationGateway,
+)
 from services.account_change_email_adapters import (
     BillingAccountEmailPolicyGateway,
     CeleryChangeEmailNotificationGateway,
@@ -37,7 +41,9 @@ from services.account_deletion_adapters import (
     EnterpriseAccountDeletionSyncGateway,
     TokenManagerAccountDeletionVerificationGateway,
 )
+from services.account_deletion_feedback_service import AccountDeletionFeedbackService
 from services.account_deletion_service import AccountDeletionService
+from services.account_education_service import AccountEducationService
 from services.account_initialization_service import AccountInitializationService
 from services.account_integration_service import AccountIntegrationService
 from services.account_password_hasher import LegacyAccountPasswordHasher
@@ -64,6 +70,8 @@ class AccountServices:
     avatar: AccountAvatarService
     change_email: AccountChangeEmailService
     deletion: AccountDeletionService
+    deletion_feedback: AccountDeletionFeedbackService
+    education: AccountEducationService
     initialization: AccountInitializationService
     integrations: AccountIntegrationService
     password: AccountPasswordService
@@ -135,6 +143,13 @@ def build_application_services(
                 ),
                 synchronization=EnterpriseAccountDeletionSyncGateway(),
                 scheduler=CeleryAccountDeletionScheduler(),
+            ),
+            deletion_feedback=AccountDeletionFeedbackService(
+                feedback=BillingAccountDeletionFeedbackGateway(),
+            ),
+            education=AccountEducationService(
+                accounts=accounts,
+                education=BillingAccountEducationGateway(),
             ),
             initialization=AccountInitializationService(
                 accounts=accounts,
