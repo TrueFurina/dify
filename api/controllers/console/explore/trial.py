@@ -39,7 +39,7 @@ from controllers.console.app.error import (
     SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.app.wraps import get_app_model_with_trial, with_session
+from controllers.console.app.wraps import get_previewable_app_model, with_session
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -824,7 +824,7 @@ class TrialSitApi(Resource):
 
     @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
     @with_session(write=False)
-    @get_app_model_with_trial(None)
+    @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
         """Retrieve app site info.
 
@@ -848,7 +848,7 @@ class TrialAppParameterApi(Resource):
 
     @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
     @with_session(write=False)
-    @get_app_model_with_trial(None)
+    @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
         """Retrieve app parameters."""
 
@@ -880,7 +880,7 @@ class TrialAppParameterApi(Resource):
 class AppApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @with_session(write=False)
-    @get_app_model_with_trial(None)
+    @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
         """Get app detail"""
 
@@ -896,7 +896,7 @@ class AppApi(Resource):
 class AppWorkflowApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialWorkflowResponse.__name__])
     @with_session(write=False)
-    @get_app_model_with_trial(None)
+    @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
         """Get workflow detail"""
         if not app_model.workflow_id:
@@ -916,7 +916,7 @@ class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @with_session(write=False)
-    @get_app_model_with_trial(None)
+    @get_previewable_app_model(None)
     def get(self, session: Session, app_model):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
