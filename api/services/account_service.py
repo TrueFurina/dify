@@ -541,7 +541,10 @@ class AccountService:
     def generate_account_deletion_verification_code(account: Account) -> tuple[str, str]:
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
-            account=account, token_type="account_deletion", additional_data={"code": code}
+            account_id=account.id,
+            email=account.email,
+            token_type="account_deletion",
+            additional_data={"code": code},
         )
         return token, code
 
@@ -917,7 +920,10 @@ class AccountService:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="reset_password", additional_data=additional_data
+            account_id=account.id if account else None,
+            email=email,
+            token_type="reset_password",
+            additional_data=additional_data,
         )
         return code, token
 
@@ -941,7 +947,7 @@ class AccountService:
         account: Account,
     ) -> str:
         token = TokenManager.generate_token(
-            account=account,
+            account_id=account.id,
             email=token_data.email,
             token_type="change_email",
             additional_data=token_data.to_token_manager_payload(),
@@ -960,7 +966,10 @@ class AccountService:
             code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         additional_data["code"] = code
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="owner_transfer", additional_data=additional_data
+            account_id=account.id if account else None,
+            email=email,
+            token_type="owner_transfer",
+            additional_data=additional_data,
         )
         return code, token
 
@@ -1020,7 +1029,10 @@ class AccountService:
 
         code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
-            account=account, email=email, token_type="email_code_login", additional_data={"code": code}
+            account_id=account.id if account else None,
+            email=email,
+            token_type="email_code_login",
+            additional_data={"code": code},
         )
         send_email_code_login_mail_task.delay(
             language=language,
