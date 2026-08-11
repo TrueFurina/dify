@@ -8,16 +8,25 @@ import { COUNT_DOWN_TIME_MS, useCountdownLeftTimeValue, useSetCountdownLeftTime 
 type CountdownProps = {
   onResend?: () => void
   resendDisabled?: boolean
+  restartOnResend?: boolean
 }
 
-export default function Countdown({ onResend, resendDisabled }: CountdownProps) {
+export default function Countdown({
+  onResend,
+  resendDisabled,
+  restartOnResend = true,
+}: CountdownProps) {
   const isClient = useIsClient()
 
   if (!isClient) return <CountdownFallback />
 
   return (
     <Suspense fallback={<CountdownFallback />}>
-      <CountdownContent onResend={onResend} resendDisabled={resendDisabled} />
+      <CountdownContent
+        onResend={onResend}
+        resendDisabled={resendDisabled}
+        restartOnResend={restartOnResend}
+      />
     </Suspense>
   )
 }
@@ -32,7 +41,7 @@ function CountdownFallback() {
   )
 }
 
-function CountdownContent({ onResend, resendDisabled }: CountdownProps) {
+function CountdownContent({ onResend, resendDisabled, restartOnResend }: CountdownProps) {
   const { t } = useTranslation()
   const storedLeftTime = useCountdownLeftTimeValue()
   const setStoredLeftTime = useSetCountdownLeftTime()
@@ -45,9 +54,11 @@ function CountdownContent({ onResend, resendDisabled }: CountdownProps) {
     },
   })
 
-  const resend = async function () {
-    setLeftTime(COUNT_DOWN_TIME_MS)
-    setStoredLeftTime(`${COUNT_DOWN_TIME_MS}`)
+  const resend = function () {
+    if (restartOnResend) {
+      setLeftTime(COUNT_DOWN_TIME_MS)
+      setStoredLeftTime(`${COUNT_DOWN_TIME_MS}`)
+    }
     onResend?.()
   }
 

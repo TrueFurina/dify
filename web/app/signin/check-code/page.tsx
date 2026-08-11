@@ -3,28 +3,31 @@ import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { TURNSTILE_SITE_KEY } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
-import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 import Turnstile from '../components/turnstile'
+import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 
 export default function CheckCode() {
   const { t, i18n } = useTranslation()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
@@ -32,12 +35,16 @@ export default function CheckCode() {
   const language = i18n.language
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
-  const [turnstileToken, setTurnstileToken] = useState('')
-  const [turnstileGeneration, setTurnstileGeneration] = useState(0)
+  const [isResending, setIsResending] = useState(false)
+  const [showResendTurnstile, setShowResendTurnstile] = useState(false)
+  const [countdownGeneration, setCountdownGeneration] = useState(0)
   const locale = useLocale()
+  const setCountdownLeftTime = useSetCountdownLeftTime()
   const codeInputRef = useRef<HTMLInputElement>(null)
   const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
-  const isTurnstileRequired = Boolean(turnstileSiteKey)
+  const isTurnstileRequired = systemFeatures.deployment_edition === 'CLOUD'
+  const shouldRenderResendTurnstile =
+    isTurnstileRequired && Boolean(turnstileSiteKey) && showResendTurnstile
 
   const verify = async () => {
     try {
@@ -89,9 +96,8 @@ export default function CheckCode() {
     codeInputRef.current?.focus()
   }, [])
 
-  const resendCode = async () => {
-    if (isTurnstileRequired && !turnstileToken) return
-
+  const resendCode = async (turnstileToken?: string) => {
+    setIsResending(true)
     try {
       const ret = await sendEMailLoginCode(
         email,
@@ -99,6 +105,8 @@ export default function CheckCode() {
         isTurnstileRequired ? turnstileToken : undefined,
       )
       if (ret.result === 'success') {
+        setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
+        setCountdownGeneration((value) => value + 1)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.data))
         router.replace(`/signin/check-code?${params.toString()}`)
@@ -106,11 +114,17 @@ export default function CheckCode() {
     } catch (error) {
       console.error(error)
     } finally {
-      if (isTurnstileRequired) {
-        setTurnstileToken('')
-        setTurnstileGeneration(value => value + 1)
-      }
+      setIsResending(false)
+      setShowResendTurnstile(false)
     }
+  }
+
+  const handleResend = () => {
+    if (isTurnstileRequired) {
+      setShowResendTurnstile(true)
+      return
+    }
+    void resendCode()
   }
 
   return (
@@ -156,19 +170,26 @@ export default function CheckCode() {
         >
           {t(($) => $['checkCode.verify'], { ns: 'login' })}
         </Button>
-        {isTurnstileRequired && (
+        {shouldRenderResendTurnstile && (
           <Turnstile
-            key={turnstileGeneration}
             siteKey={turnstileSiteKey}
-            onVerify={setTurnstileToken}
+            onVerify={(turnstileToken) => {
+              // oxlint-disable-next-line no-console -- Temporary Turnstile token debugging.
+              console.log(turnstileToken)
+              void resendCode(turnstileToken)
+            }}
             onInvalidate={() => {
-              setTurnstileToken('')
+              setShowResendTurnstile(false)
             }}
           />
         )}
         <Countdown
-          onResend={resendCode}
-          resendDisabled={isTurnstileRequired && !turnstileToken}
+          key={countdownGeneration}
+          onResend={handleResend}
+          resendDisabled={
+            isResending || showResendTurnstile || (isTurnstileRequired && !turnstileSiteKey)
+          }
+          restartOnResend={false}
         />
       </form>
       <div className="py-2">
