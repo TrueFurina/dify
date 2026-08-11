@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
+import { TURNSTILE_SITE_KEY } from '@/config'
 import { useLocale } from '@/context/i18n'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
@@ -18,6 +19,7 @@ import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
+import Turnstile from '../components/turnstile'
 
 export default function CheckCode() {
   const { t, i18n } = useTranslation()
@@ -30,8 +32,12 @@ export default function CheckCode() {
   const language = i18n.language
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileGeneration, setTurnstileGeneration] = useState(0)
   const locale = useLocale()
   const codeInputRef = useRef<HTMLInputElement>(null)
+  const turnstileSiteKey = TURNSTILE_SITE_KEY.trim()
+  const isTurnstileRequired = Boolean(turnstileSiteKey)
 
   const verify = async () => {
     try {
@@ -84,8 +90,14 @@ export default function CheckCode() {
   }, [])
 
   const resendCode = async () => {
+    if (isTurnstileRequired && !turnstileToken) return
+
     try {
-      const ret = await sendEMailLoginCode(email, locale)
+      const ret = await sendEMailLoginCode(
+        email,
+        locale,
+        isTurnstileRequired ? turnstileToken : undefined,
+      )
       if (ret.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(ret.data))
@@ -93,6 +105,11 @@ export default function CheckCode() {
       }
     } catch (error) {
       console.error(error)
+    } finally {
+      if (isTurnstileRequired) {
+        setTurnstileToken('')
+        setTurnstileGeneration(value => value + 1)
+      }
     }
   }
 
@@ -139,7 +156,20 @@ export default function CheckCode() {
         >
           {t(($) => $['checkCode.verify'], { ns: 'login' })}
         </Button>
-        <Countdown onResend={resendCode} />
+        {isTurnstileRequired && (
+          <Turnstile
+            key={turnstileGeneration}
+            siteKey={turnstileSiteKey}
+            onVerify={setTurnstileToken}
+            onInvalidate={() => {
+              setTurnstileToken('')
+            }}
+          />
+        )}
+        <Countdown
+          onResend={resendCode}
+          resendDisabled={isTurnstileRequired && !turnstileToken}
+        />
       </form>
       <div className="py-2">
         <div className="h-px bg-linear-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>

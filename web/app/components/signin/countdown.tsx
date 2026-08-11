@@ -7,16 +7,17 @@ import { COUNT_DOWN_TIME_MS, useCountdownLeftTimeValue, useSetCountdownLeftTime 
 
 type CountdownProps = {
   onResend?: () => void
+  resendDisabled?: boolean
 }
 
-export default function Countdown({ onResend }: CountdownProps) {
+export default function Countdown({ onResend, resendDisabled }: CountdownProps) {
   const isClient = useIsClient()
 
   if (!isClient) return <CountdownFallback />
 
   return (
     <Suspense fallback={<CountdownFallback />}>
-      <CountdownContent onResend={onResend} />
+      <CountdownContent onResend={onResend} resendDisabled={resendDisabled} />
     </Suspense>
   )
 }
@@ -31,7 +32,7 @@ function CountdownFallback() {
   )
 }
 
-function CountdownContent({ onResend }: CountdownProps) {
+function CountdownContent({ onResend, resendDisabled }: CountdownProps) {
   const { t } = useTranslation()
   const storedLeftTime = useCountdownLeftTimeValue()
   const setStoredLeftTime = useSetCountdownLeftTime()
@@ -61,7 +62,8 @@ function CountdownContent({ onResend }: CountdownProps) {
       {time <= 0 && (
         <button
           type="button"
-          className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+          className="cursor-pointer border-none bg-transparent p-0 text-left system-xs-medium text-text-accent-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden disabled:cursor-not-allowed disabled:text-text-disabled"
+          disabled={resendDisabled}
           onClick={resend}
         >
           {t(($) => $['checkCode.resend'], { ns: 'login' })}
