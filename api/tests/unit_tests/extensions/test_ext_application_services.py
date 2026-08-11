@@ -168,9 +168,10 @@ def test_build_application_services_wires_account_profile_repository(
 def test_build_application_services_requires_invitation_for_cloud_initialization(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    services = build_application_services(
+    services = ext_application_services.build_application_services(
         database_client=sqlite_session_factory,
         deployment_edition=DeploymentEdition.CLOUD,
+        initialization_password="",
         redis=MagicMock(spec=RedisClientWrapper),
     )
 

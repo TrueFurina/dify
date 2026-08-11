@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import HTTPException
 
 from controllers.common.wraps import _extract_resource_id
+from controllers.console import api as console_api
 from controllers.console import flask_admission
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
@@ -38,6 +39,7 @@ from controllers.console.wraps import (
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
+from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import Dataset, RateLimitLog
@@ -126,6 +128,19 @@ class TestAccountInitialization:
 
 class TestCurrentContextInjection:
     """Test request context injection decorators."""
+
+    def test_console_maps_missing_active_workspace_to_safe_internal_error(self):
+        handler = console_api.error_handlers[ActiveWorkspaceRequiredError]
+
+        with Flask(__name__).app_context():
+            body, status = handler(ActiveWorkspaceRequiredError())
+
+        assert status == 500
+        assert body == {
+            "code": "active_workspace_required",
+            "message": "Internal Server Error",
+            "status": 500,
+        }
 
     def test_console_account_admission_injects_request_context(self):
         current_user = make_account()
