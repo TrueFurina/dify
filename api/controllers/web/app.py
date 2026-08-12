@@ -23,7 +23,13 @@ from services.webapp_access_query_service import (
 )
 
 from . import web_ns
-from .error import AgentNotPublishedError, AppUnavailableError, WebAppAccessServiceUnavailableError, WebAppNotFoundError
+from .error import (
+    AgentNotPublishedError,
+    AppUnavailableError,
+    WebAppAccessServiceUnavailableError,
+    WebAppAuthRequiredError,
+    WebAppNotFoundError,
+)
 from .wraps import WebApiResource
 
 logger = logging.getLogger(__name__)
@@ -176,7 +182,7 @@ class AppWebAuthPermission(Resource):
             decoded = PassportService().verify(tk)
             user_id = decoded.get("user_id", "visitor")
         except Unauthorized:
-            raise
+            raise WebAppAuthRequiredError() from None
         except Exception:
             logger.exception("Unexpected error during auth verification")
             raise
