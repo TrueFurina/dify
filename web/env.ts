@@ -170,6 +170,7 @@ const clientSchema = {
 export const env = createEnv({
   server: {
     CONSOLE_API_URL: z.string().optional(),
+    ENABLE_AGENT_V2: coercedBoolean.default(false),
     SERVER_CONSOLE_API_URL: z.string().optional(),
     /**
      * Maximum length of segmentation tokens for indexing
@@ -228,7 +229,7 @@ export const env = createEnv({
       ? process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON
       : getRuntimeEnvFromBody('disableUploadImageAsIcon'),
     NEXT_PUBLIC_ENABLE_AGENT_V2: isServer
-      ? process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
+      ? process.env.ENABLE_AGENT_V2
       : getRuntimeEnvFromBody('enableAgentV2'),
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW

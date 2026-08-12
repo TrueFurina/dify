@@ -1,4 +1,5 @@
 describe('env runtime transport', () => {
+  const originalAgentV2ServerEnv = process.env.ENABLE_AGENT_V2
   const originalAgentV2Env = process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
   const originalMarkdownFormFieldNameExtraChars =
     process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
@@ -12,12 +13,15 @@ describe('env runtime transport', () => {
     document.body.removeAttribute('data-enable-agent-v-2')
     document.body.removeAttribute('data-markdown-form-field-name-extra-chars')
     document.body.removeAttribute('data-turnstile-site-key')
+    delete process.env.ENABLE_AGENT_V2
     delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
     delete process.env.NEXT_PUBLIC_MARKDOWN_FORM_FIELD_NAME_EXTRA_CHARS
     delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
   })
 
   afterAll(() => {
+    if (originalAgentV2ServerEnv === undefined) delete process.env.ENABLE_AGENT_V2
+    else process.env.ENABLE_AGENT_V2 = originalAgentV2ServerEnv
     if (originalAgentV2Env === undefined) delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
     else process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = originalAgentV2Env
     if (originalMarkdownFormFieldNameExtraChars === undefined)
@@ -38,7 +42,8 @@ describe('env runtime transport', () => {
   })
 
   it('should emit the Agent v2 runtime dataset attribute from getDatasetMap on the server', async () => {
-    process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = 'true'
+    process.env.ENABLE_AGENT_V2 = 'true'
+    process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = 'false'
 
     vi.doMock('../utils/client', () => ({
       isClient: false,

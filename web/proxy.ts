@@ -9,6 +9,7 @@ const NECESSARY_DOMAIN =
   '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://cdn-cookieyes.com https://ungh.cc https://api2.amplitude.com *.amplitude.com'
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
+const AGENT_V2_PATH_SEGMENTS = ['/agents']
 const EMBEDDABLE_PATH_SEGMENTS = [
   '/agent',
   '/chat',
@@ -47,6 +48,17 @@ const wrapResponseWithFrameProtection = (response: NextResponse, pathname: strin
 }
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+
+  if (!env.ENABLE_AGENT_V2 && matchesPathSegment(pathname, AGENT_V2_PATH_SEGMENTS)) {
+    return wrapResponseWithFrameProtection(
+      new NextResponse('Not Found', {
+        status: 404,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      }),
+      pathname,
+    )
+  }
+
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(CURRENT_PATHNAME_HEADER, pathname)
   requestHeaders.set(CURRENT_SEARCH_HEADER, search)

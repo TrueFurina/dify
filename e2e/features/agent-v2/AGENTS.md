@@ -4,7 +4,7 @@ This file scopes Agent v2 conventions under `features/agent-v2/` and its step de
 
 ## Scope
 
-Agent v2 scenarios use the `@agent-v2` capability tag. The E2E web environment enables Agent v2 through `NEXT_PUBLIC_ENABLE_AGENT_V2=true`.
+Agent v2 scenarios use the `@agent-v2` capability tag. The E2E web environment enables Agent v2 through `ENABLE_AGENT_V2=true`.
 
 Cover user-observable Configure, Build draft, saved configuration, publish, Access Point, files, advanced settings, and runtime behavior. Do not keep readiness-only, unavailable, or permanently skipped scenarios. Use API setup for prerequisites, then assert visible behavior or a persisted public contract.
 

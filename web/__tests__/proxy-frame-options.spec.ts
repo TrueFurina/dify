@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { canEmbedPath, proxy } from '@/proxy'
 
 const mockEnv = vi.hoisted(() => ({
+  ENABLE_AGENT_V2: true,
   NEXT_PUBLIC_ALLOW_EMBED: false,
   NEXT_PUBLIC_CSP_WHITELIST: 'https://example.com',
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: '',
@@ -19,6 +20,7 @@ const createRequest = (url: string) =>
 
 describe('proxy frame options', () => {
   afterEach(() => {
+    mockEnv.ENABLE_AGENT_V2 = true
     mockEnv.NEXT_PUBLIC_ALLOW_EMBED = false
     mockEnv.NEXT_PUBLIC_TURNSTILE_SITE_KEY = ''
     vi.unstubAllEnvs()
@@ -81,5 +83,36 @@ describe('proxy frame options', () => {
 
     expect(response.headers.get('x-frame-options')).toBe('DENY')
     expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'none'")
+  })
+})
+
+describe('proxy Agent v2 routing', () => {
+  afterEach(() => {
+    mockEnv.ENABLE_AGENT_V2 = true
+  })
+
+  it.each(['/agents', '/agents/agent-1/configure'])(
+    'should return not found for %s when Agent v2 is disabled',
+    (pathname) => {
+      mockEnv.ENABLE_AGENT_V2 = false
+
+      const response = proxy(createRequest(`https://cloud.dify.ai${pathname}`))
+
+      expect(response.status).toBe(404)
+    },
+  )
+
+  it('should allow Agent v2 routes when enabled', () => {
+    const response = proxy(createRequest('https://cloud.dify.ai/agents'))
+
+    expect(response.status).toBe(200)
+  })
+
+  it('should not gate published Agent apps', () => {
+    mockEnv.ENABLE_AGENT_V2 = false
+
+    const response = proxy(createRequest('https://cloud.dify.ai/agent/public-token'))
+
+    expect(response.status).toBe(200)
   })
 })
