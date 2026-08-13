@@ -1,6 +1,7 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MailAndCodeAuth from '../mail-and-code-auth'
 
 type TurnstileOptions = {
@@ -22,6 +23,11 @@ const mocks = vi.hoisted(() => ({
 }))
 
 let turnstileOptions: TurnstileOptions | undefined
+
+const renderMailAndCodeAuth = (deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD') =>
+  renderWithConsoleQuery(<MailAndCodeAuth isInvite={false} />, {
+    systemFeatures: { deployment_edition: deploymentEdition },
+  })
 
 vi.mock('@/next/script', async () => {
   const { useEffect } = await vi.importActual<typeof import('react')>('react')
@@ -85,9 +91,13 @@ describe('MailAndCodeAuth', () => {
     })
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('enables SaaS email-code login only while Turnstile verification is valid', async () => {
     const user = userEvent.setup()
-    render(<MailAndCodeAuth isInvite={false} isCloudEdition />)
+    renderMailAndCodeAuth()
 
     await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
     const continueButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
@@ -126,7 +136,7 @@ describe('MailAndCodeAuth', () => {
 
   it('submits the SaaS email-code login after Turnstile verification succeeds', async () => {
     const user = userEvent.setup()
-    render(<MailAndCodeAuth isInvite={false} isCloudEdition />)
+    renderMailAndCodeAuth()
 
     await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
     await waitFor(() => {
@@ -147,9 +157,55 @@ describe('MailAndCodeAuth', () => {
     expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
   })
 
+  it('requires a fresh Turnstile token after an email-code request fails', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.sendEMailLoginCode
+      .mockRejectedValueOnce(new Error('email send failed'))
+      .mockResolvedValueOnce({ result: 'success', data: 'login-token' })
+    renderMailAndCodeAuth()
+
+    await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
+    await waitFor(() => {
+      expect(turnstileOptions).toBeDefined()
+    })
+    act(() => {
+      turnstileOptions?.callback('consumed-turnstile-token')
+    })
+    const continueButton = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(mocks.sendEMailLoginCode).toHaveBeenCalledWith(
+        'user@example.com',
+        'en-US',
+        'consumed-turnstile-token',
+      )
+    })
+    await waitFor(() => {
+      expect(continueButton).toBeDisabled()
+      expect(mocks.render).toHaveBeenCalledTimes(2)
+    })
+
+    act(() => {
+      turnstileOptions?.callback('fresh-turnstile-token')
+    })
+    expect(continueButton).toBeEnabled()
+    await user.click(continueButton)
+
+    await waitFor(() => {
+      expect(mocks.sendEMailLoginCode).toHaveBeenLastCalledWith(
+        'user@example.com',
+        'en-US',
+        'fresh-turnstile-token',
+      )
+    })
+    expect(mocks.push).toHaveBeenCalledWith(expect.stringContaining('/signin/check-code?'))
+  })
+
   it('keeps non-SaaS email-code login independent of Turnstile', async () => {
     const user = userEvent.setup()
-    render(<MailAndCodeAuth isInvite={false} isCloudEdition={false} />)
+    renderMailAndCodeAuth('COMMUNITY')
 
     await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
 
@@ -160,7 +216,7 @@ describe('MailAndCodeAuth', () => {
   it('keeps SaaS email-code login disabled when the Turnstile site key is missing', async () => {
     const user = userEvent.setup()
     mocks.turnstileSiteKey = ''
-    render(<MailAndCodeAuth isInvite={false} isCloudEdition />)
+    renderMailAndCodeAuth()
 
     await user.type(screen.getByRole('textbox', { name: 'login.email' }), 'user@example.com')
 

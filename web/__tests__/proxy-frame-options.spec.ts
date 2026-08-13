@@ -12,11 +12,15 @@ vi.mock('@/env', () => ({
   env: mockEnv,
 }))
 
-const createRequest = (url: string) =>
-  ({
+const createRequest = (url: string) => {
+  const nextUrl = new URL(url) as URL & { clone: () => URL }
+  nextUrl.clone = () => new URL(nextUrl)
+
+  return {
     headers: new Headers(),
-    nextUrl: new URL(url),
-  }) as Parameters<typeof proxy>[0]
+    nextUrl,
+  } as Parameters<typeof proxy>[0]
+}
 
 describe('proxy frame options', () => {
   afterEach(() => {
@@ -114,5 +118,28 @@ describe('proxy Agent v2 routing', () => {
     const response = proxy(createRequest('https://cloud.dify.ai/agent/public-token'))
 
     expect(response.status).toBe(200)
+  })
+})
+
+describe('proxy education entry normalization', () => {
+  it('redirects the legacy education action without leaking it into the canonical URL', () => {
+    const response = proxy(
+      createRequest('https://cloud.dify.ai/?action=getEducationVerify&utm_source=education-site'),
+    )
+
+    expect(response.status).toBe(308)
+    expect(response.headers.get('location')).toBe(
+      'https://cloud.dify.ai/education/verify?utm_source=education-site',
+    )
+  })
+
+  it('does not redirect unrelated actions or paths', () => {
+    const unrelatedAction = proxy(createRequest('https://cloud.dify.ai/?action=showSettings'))
+    const unrelatedPath = proxy(
+      createRequest('https://cloud.dify.ai/apps?action=getEducationVerify'),
+    )
+
+    expect(unrelatedAction.status).toBe(200)
+    expect(unrelatedPath.status).toBe(200)
   })
 })

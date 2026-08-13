@@ -20,6 +20,7 @@ const EMBEDDABLE_PATH_SEGMENTS = [
 ]
 const NON_EMBEDDABLE_PATH_SEGMENTS = ['/device']
 const FRAME_ANCESTORS_NONE = "frame-ancestors 'none';"
+const LEGACY_EDUCATION_ACTION = 'getEducationVerify'
 
 const matchesPathSegment = (pathname: string, segments: string[]) =>
   segments.some((segment) => pathname === segment || pathname.startsWith(`${segment}/`))
@@ -48,6 +49,18 @@ const wrapResponseWithFrameProtection = (response: NextResponse, pathname: strin
 }
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl
+
+  // TODO(2026-11-11): Remove after external education CTAs and active campaign links use the canonical route.
+  if (pathname === '/' && request.nextUrl.searchParams.get('action') === LEGACY_EDUCATION_ACTION) {
+    const destination = request.nextUrl.clone()
+    destination.pathname = '/education/verify'
+    destination.searchParams.delete('action')
+
+    return wrapResponseWithFrameProtection(
+      NextResponse.redirect(destination, { status: 308 }),
+      pathname,
+    )
+  }
 
   if (!env.ENABLE_AGENT_V2 && matchesPathSegment(pathname, AGENT_V2_PATH_SEGMENTS)) {
     return wrapResponseWithFrameProtection(

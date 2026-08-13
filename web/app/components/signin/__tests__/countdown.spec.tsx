@@ -61,6 +61,7 @@ describe('Countdown', () => {
     expect(localStorage.getItem(COUNT_DOWN_KEY)).toBe('0')
     expect(onResend).not.toHaveBeenCalled()
   })
+
   it('lets the caller defer restarting the countdown until resend succeeds', () => {
     localStorage.setItem(COUNT_DOWN_KEY, '0')
     const onResend = vi.fn()
