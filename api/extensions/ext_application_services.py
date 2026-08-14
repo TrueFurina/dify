@@ -14,6 +14,7 @@ from enums import DeploymentEdition
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
+from repositories.trial_app_query_repository import TrialAppQueryRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -21,6 +22,9 @@ from services.feature_query_service import FeatureQueryService
 from services.feature_service import FeatureService
 from services.feature_service_gateway import FeatureServiceGateway
 from services.init_validation_service import InitValidationService
+from services.recommended_app_query_compat import LegacyRecommendedAppCatalogGateway
+from services.recommended_app_query_service import RecommendedAppQueryService
+from services.recommended_app_service import RecommendedAppService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -39,6 +43,7 @@ class ApplicationServices:
     setup: SetupService
     feature_queries: FeatureQueryService
     init_validation: InitValidationService
+    recommended_app_queries: RecommendedAppQueryService
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
 
@@ -72,6 +77,11 @@ def build_application_services(
             state=installation_state,
             validation_required=(deployment_edition != DeploymentEdition.CLOUD and bool(initialization_password)),
             expected_password=initialization_password,
+        ),
+        recommended_app_queries=RecommendedAppQueryService(
+            catalog=LegacyRecommendedAppCatalogGateway(session_factory=database_client),
+            trial_apps=TrialAppQueryRepository(session_factory=database_client),
+            is_trial_enabled=RecommendedAppService.is_trial_app_enabled,
         ),
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(

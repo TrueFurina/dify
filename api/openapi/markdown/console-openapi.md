@@ -6882,7 +6882,8 @@ Check if dataset is in use
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [RecommendedAppDetailNullableResponse](#recommendedappdetailnullableresponse)<br> |
+| 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
+| 404 | Recommended app not found |  |
 
 ### [GET] /features
 **Get feature configuration for current tenant**
@@ -21239,12 +21240,6 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | updated_at | integer |  | Yes |
-
-#### RecommendedAppDetailNullableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| RecommendedAppDetailNullableResponse | [RecommendedAppDetailResponse](#recommendedappdetailresponse) |  |  |
 
 #### RecommendedAppDetailResponse
 
