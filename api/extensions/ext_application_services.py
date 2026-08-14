@@ -25,7 +25,6 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.init_validation_service import InitValidationService
 from services.recommended_app_query_compat import LegacyRecommendedAppCatalogGateway
 from services.recommended_app_query_service import RecommendedAppQueryService
-from services.recommended_app_service import RecommendedAppService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
@@ -59,6 +58,7 @@ def build_application_services(
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
     installation_state = InstallationStateRepository(client=database_client)
+    trial_app_enabled = FeatureService.is_trial_app_enabled()
     return ApplicationServices(
         explore_banner_queries=ExploreBannerQueryService(
             banners=ExploreBannerQueryRepository(client=database_client),
@@ -84,7 +84,7 @@ def build_application_services(
         recommended_app_queries=RecommendedAppQueryService(
             catalog=LegacyRecommendedAppCatalogGateway(session_factory=database_client),
             trial_apps=TrialAppQueryRepository(session_factory=database_client),
-            is_trial_enabled=RecommendedAppService.is_trial_app_enabled,
+            trial_enabled=trial_app_enabled,
         ),
         trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workspace_queries=WorkspaceQueryService(
