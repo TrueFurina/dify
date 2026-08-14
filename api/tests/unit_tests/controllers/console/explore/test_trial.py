@@ -67,6 +67,17 @@ def account() -> Account:
     return acc
 
 
+@pytest.fixture
+def trial_app_usage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    usage = MagicMock()
+    monkeypatch.setattr(
+        module,
+        "application_services",
+        MagicMock(return_value=SimpleNamespace(trial_app_usage=usage)),
+    )
+    return usage
+
+
 def _file_data() -> Any:
     file_data: Any = BytesIO(b"fake audio data")
     file_data.filename = "test.wav"
@@ -268,14 +279,19 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
                     MagicMock(mode=AppMode.CHAT),
                 )
 
-    def test_success(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_workflow: MagicMock,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialAppWorkflowRunApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}}),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api,
@@ -286,6 +302,7 @@ class TestTrialAppWorkflowRunApi(_UsesSQLiteSession):
             )
 
         assert result is not None
+        trial_app_usage.record.assert_called_once_with(app_id="a-workflow", account_id="u1")
 
     def test_workflow_provider_not_init(self, app: Flask, trial_app_workflow: MagicMock, account: Account) -> None:
         api = module.TrialAppWorkflowRunApi()
@@ -450,20 +467,26 @@ class TestTrialChatApi(_UsesSQLiteSession):
                     MagicMock(mode="completion"),
                 )
 
-    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_chat: MagicMock,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialChatApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": "hi"}),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api, ChatRequest.model_validate(request.get_json()), self.sqlite_session, account, trial_app_chat
             )
 
         assert result is not None
+        trial_app_usage.record.assert_called_once_with(app_id="a-chat", account_id="u1")
 
     def test_chat_conversation_not_exists(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatApi()
@@ -651,14 +674,19 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
                     MagicMock(mode=AppMode.CHAT),
                 )
 
-    def test_success(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_completion: MagicMock,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialCompletionApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"inputs": {}, "query": ""}),
             patch.object(module.AppGenerateService, "generate", return_value=MagicMock()),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api,
@@ -669,6 +697,7 @@ class TestTrialCompletionApi(_UsesSQLiteSession):
             )
 
         assert result is not None
+        trial_app_usage.record.assert_called_once_with(app_id="a-comp", account_id="u1")
 
     def test_completion_app_config_broken(self, app: Flask, trial_app_completion: MagicMock, account: Account) -> None:
         api = module.TrialCompletionApi()
@@ -948,7 +977,13 @@ class TestTrialAppParameterApi:
 
 
 class TestTrialChatAudioApi:
-    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_chat: MagicMock,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialChatAudioApi()
         method = unwrap(api.post)
 
@@ -959,11 +994,11 @@ class TestTrialChatAudioApi:
                 "/", method="POST", data={"file": (file_data, "test.wav")}, content_type="multipart/form-data"
             ),
             patch.object(module.AudioService, "transcript_asr", return_value={"text": "hello"}),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(api, account, trial_app_chat)
 
         assert result == {"text": "hello"}
+        trial_app_usage.record.assert_called_once_with(app_id="a-chat", account_id="u1")
 
     def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatAudioApi()
@@ -1169,22 +1204,34 @@ class TestTrialChatAudioApi:
 
 
 class TestTrialChatTextApi:
-    def test_success(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success(
+        self,
+        app: Flask,
+        trial_app_chat: MagicMock,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
 
         with (
             app.test_request_context("/", json={"text": "hello", "voice": "en-US"}),
             patch.object(module.AudioService, "transcript_tts", return_value={"audio": "base64_data"}),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api, TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}), account, trial_app_chat
             )
 
         assert result == {"audio": "base64_data"}
+        trial_app_usage.record.assert_called_once_with(app_id="a-chat", account_id="u1")
 
-    def test_success_with_message_ref(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
+    def test_success_with_message_ref(
+        self,
+        app: Flask,
+        trial_app_chat: MagicMock,
+        account: Account,
+        trial_app_usage: MagicMock,
+    ) -> None:
         api = module.TrialChatTextApi()
         method = unwrap(api.post)
         transcript_tts = MagicMock(return_value={"audio": "base64_data"})
@@ -1193,7 +1240,6 @@ class TestTrialChatTextApi:
         with (
             app.test_request_context("/", json={"text": "hello", "message_id": "message-1"}),
             patch.object(module.AudioService, "transcript_tts", transcript_tts),
-            patch.object(module.RecommendedAppService, "add_trial_app_record"),
         ):
             result = method(
                 api, TextToSpeechRequest.model_validate(request.get_json(silent=True) or {}), account, trial_app_chat
@@ -1205,6 +1251,7 @@ class TestTrialChatTextApi:
             "message-1",
             account_id="u1",
         )
+        trial_app_usage.record.assert_called_once_with(app_id="a-chat", account_id="u1")
 
     def test_app_config_broken(self, app: Flask, trial_app_chat: MagicMock, account: Account) -> None:
         api = module.TrialChatTextApi()

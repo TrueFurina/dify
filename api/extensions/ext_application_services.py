@@ -15,6 +15,7 @@ from extensions.ext_redis import RedisClientWrapper, redis_client
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.trial_app_query_repository import TrialAppQueryRepository
+from repositories.trial_app_usage_repository import TrialAppUsageRepository
 from repositories.workspace_member_query_repository import WorkspaceMemberQueryRepository
 from repositories.workspace_query_repository import WorkspaceQueryRepository
 from services.explore_banner_query_service import ExploreBannerQueryService
@@ -28,6 +29,7 @@ from services.recommended_app_service import RecommendedAppService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock, RegisterServiceAccountProvisioner
 from services.setup_service import SetupService
+from services.trial_app_usage import TrialAppUsageRecorder
 from services.workspace_member_query_service import WorkspaceMemberQueryService
 from services.workspace_member_role_resolver import DeploymentWorkspaceMemberRoleResolver
 from services.workspace_plan_gateway import DeploymentWorkspacePlanGateway
@@ -44,6 +46,7 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     init_validation: InitValidationService
     recommended_app_queries: RecommendedAppQueryService
+    trial_app_usage: TrialAppUsageRecorder
     workspace_queries: WorkspaceQueryService
     workspace_member_queries: WorkspaceMemberQueryService
 
@@ -83,6 +86,7 @@ def build_application_services(
             trial_apps=TrialAppQueryRepository(session_factory=database_client),
             is_trial_enabled=RecommendedAppService.is_trial_app_enabled,
         ),
+        trial_app_usage=TrialAppUsageRepository(session_factory=database_client),
         workspace_queries=WorkspaceQueryService(
             workspaces=WorkspaceQueryRepository(
                 client=database_client,
